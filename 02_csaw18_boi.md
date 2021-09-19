@@ -1,4 +1,4 @@
-# boi
+# csaw18_boi
 
 [Link to
 binary](https://github.com/guyinatuxedo/nightmare/raw/master/modules/04-bof_variable/csaw18_boi/boi)

@@ -1,4 +1,4 @@
-# pwn1
+# tamu19_pwn1
 
 [Link to binary](https://github.com/guyinatuxedo/nightmare/blob/master/modules/04-bof_variable/tamu19_pwn1/pwn1)
 
